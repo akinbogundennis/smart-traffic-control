@@ -48,15 +48,97 @@ emergency-vehicle priority and adapting to adverse weather?
 
 No backend, database, or paid APIs. Runs fully locally.
 
-## Setup and execution
+## Getting started
+
+### Prerequisites
+
+- **Node.js 18 or newer** (developed on Node 24). Check with `node --version`.
+- **npm 9 or newer** (ships with Node). Check with `npm --version`.
+- A modern browser with HTML5 Canvas support (Chrome, Edge, Firefox, Safari).
+
+No backend, database, environment variables, or paid APIs are required. The app
+runs entirely in the browser.
+
+### 1. Clone the repository
 
 ```bash
-npm install     # install dependencies
-npm run dev     # start the dev server (http://localhost:5173)
-npm run build   # production build
-npm run preview # preview the production build
-npm test        # run the automated test suite (Vitest)
+git clone git@github.com:akinbogundennis/smart-traffic-control.git
+cd smart-traffic-control
 ```
+
+> HTTPS alternative:
+> `git clone https://github.com/akinbogundennis/smart-traffic-control.git`
+
+### 2. Install dependencies
+
+```bash
+npm install
+```
+
+This installs React, Vite, Tailwind CSS, Recharts, Lucide React, and the Vitest
+test tooling.
+
+### 3. Run the development server
+
+```bash
+npm run dev
+```
+
+Vite prints a local URL (default **http://localhost:5173**). Open it in your
+browser. The dev server supports hot-reload, so edits appear without a manual
+refresh. Press `Ctrl + C` in the terminal to stop it.
+
+### 4. Build for production
+
+```bash
+npm run build     # outputs an optimized bundle to dist/
+npm run preview   # serve the built bundle locally to verify it
+```
+
+The `dist/` folder is a static site and can be hosted on any static host
+(GitHub Pages, Netlify, Vercel, S3, etc.).
+
+### 5. Run the tests
+
+```bash
+npm test          # run the Vitest suite once
+npm run test:watch # re-run on file changes
+```
+
+### Available npm scripts
+
+| Script | What it does |
+|---|---|
+| `npm run dev` | Start the Vite dev server with hot-reload |
+| `npm run build` | Produce an optimized production build in `dist/` |
+| `npm run preview` | Serve the production build locally for a final check |
+| `npm test` | Run the automated test suite once (Vitest) |
+| `npm run test:watch` | Run tests in watch mode |
+
+### Using the dashboard
+
+1. Open the app and land on the **Simulation** tab.
+2. Press **Start** in the control panel (left) to run the simulation.
+3. Adjust **mode** (Fixed-Time / Adaptive), **weather**, **traffic volume**,
+   **per-direction demand**, and **speed** (1x / 2x / 5x) — every control
+   affects the live simulation.
+4. Click an **Emergency vehicle** direction to inject an ambulance and watch the
+   safe priority handling.
+5. Open **Analytics** or **Scenario Testing** to run both controllers against
+   identical traffic and compare the measured results.
+6. **System Architecture** and **About Project** document the design.
+
+### Troubleshooting
+
+- **Blank page**: hard-refresh the browser (`Ctrl + Shift + R`) to clear cached
+  modules. A caught render error is shown on-screen with details rather than a
+  blank page.
+- **Port 5173 in use**: Vite will pick the next free port and print the URL;
+  use whatever it prints.
+- **`npm install` warnings about vulnerabilities**: these are in dev-only
+  tooling dependencies and do not affect the running app. Avoid
+  `npm audit fix --force`, which can introduce breaking changes.
+- **Node too old**: if `npm run dev` fails on syntax, upgrade to Node 18+.
 
 ## Functional requirements (implemented)
 
