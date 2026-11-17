@@ -30,6 +30,9 @@ export function createMetrics() {
     emergencyProcessed: 0,
     emergencyResponseSum: 0,
     emergencyResponseCount: 0,
+    hotspotReleases: 0, // greens ended early by the hotspot sensor
+    hotspotDwellSum: 0, // total dwell (s) of the vehicles that triggered releases
+    hotspotGreenSaved: 0, // total idle green (s) those releases cut short
     history: [], // [{ t, avgWait, queue, throughput }]
     _sinceSample: 0,
   }
@@ -53,10 +56,20 @@ export function recordExit(m, vehicle, simTime, weatherKey) {
   m.totalDelay += delay
 }
 
-export function recordEmergency(m, responseTime) {
+// Record an emergency vehicle that cleared the intersection. `delay` is the time
+// it actually spent stopped on the way through (emergency vehicles do not wait
+// for a green, so this is what the response delay means now).
+export function recordEmergency(m, delay) {
   m.emergencyProcessed += 1
-  m.emergencyResponseSum += responseTime
+  m.emergencyResponseSum += delay
   m.emergencyResponseCount += 1
+}
+
+// Record a green that the hotspot sensor ended early.
+export function recordHotspotRelease(m, dwell, savedGreen) {
+  m.hotspotReleases += 1
+  m.hotspotDwellSum += dwell
+  m.hotspotGreenSaved += savedGreen
 }
 
 // Sample the instantaneous total queue length, and append to the time series
@@ -119,6 +132,9 @@ export function summarize(m) {
     throughput: throughputPerHour(m),
     emergencyProcessed: m.emergencyProcessed,
     avgEmergencyResponse: avgEmergencyResponse(m),
+    hotspotReleases: m.hotspotReleases,
+    avgHotspotDwell: m.hotspotReleases > 0 ? m.hotspotDwellSum / m.hotspotReleases : 0,
+    hotspotGreenSaved: m.hotspotGreenSaved,
     elapsed: m.elapsed,
   }
 }

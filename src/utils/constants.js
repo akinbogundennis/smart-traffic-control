@@ -82,6 +82,43 @@ export const ADAPTIVE = {
 }
 
 // ---------------------------------------------------------------------------
+// Hotspot sensor - a detection zone just upstream of each stop line.
+//
+// The sensor measures how long a vehicle has been continuously stopped inside
+// the zone (its "dwell"). The adaptive controller uses dwell plus presence
+// detection on the opposing approach to release a green early when nothing is
+// coming, instead of making a lone vehicle wait out the timer.
+// ---------------------------------------------------------------------------
+
+export const HOTSPOT = {
+  length: 100, // px upstream of the stop line (measured from the front bumper)
+  minDwell: 1.5, // s a vehicle must sit stopped before it can trigger a release
+  gapOutMinGreen: 6, // s the active green must have run before an early release
+  // The active approach must be empty out to `clearRange` px from its stop
+  // line. The longer the waiting vehicle has sat, the smaller that range gets
+  // (down to clearRangeMin), so patience is rewarded with a faster release.
+  clearRangeBase: 280,
+  clearRangeShrink: 30, // px of required clear range given up per second of dwell
+  clearRangeMin: 100,
+}
+
+// ---------------------------------------------------------------------------
+// Intersection access rules (who may enter the box, and when)
+// ---------------------------------------------------------------------------
+
+export const INTERSECTION = {
+  emergencyAlertRange: 260, // px from the box edge at which an emergency vehicle claims the box
+  yieldSpeed: 18, // px/s: speed cap for cars ahead of an emergency vehicle on its road
+  yieldRange: 240, // px: how far ahead of an emergency vehicle cars slow down
+  arrivalBucket: 0.5, // s: arrivals within one bucket count as simultaneous
+}
+
+// Lane index used by emergency vehicles. 0.5 is the dashed line between the two
+// inbound lanes, so an emergency vehicle rides alongside queued traffic without
+// overlapping either lane.
+export const EMERGENCY_LANE = 0.5
+
+// ---------------------------------------------------------------------------
 // Weather - affects movement AND signal timing (prompt section 7)
 // ---------------------------------------------------------------------------
 

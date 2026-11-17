@@ -16,6 +16,8 @@
 //  8. Weather: adverse weather lengthens green slightly (slower discharge) and
 //             lengthens yellow/all-red (via weather presets in the signal).
 //  9. Emergency priority handled by EmergencyPriorityController, layered on top.
+// 10. Hotspot early release: a vehicle stopped in a red approach's hotspot, with
+//     the green approach empty, ends the green early (see hotspotRelease).
 //
 // Hysteresis: the active phase keeps the green until it has served its computed
 // duration OR the opposing phase's demand exceeds the active one by switchMargin
@@ -24,6 +26,7 @@
 import {
   TIMING,
   ADAPTIVE,
+  HOTSPOT,
   PHASES,
   opposingPhase,
 } from '../utils/constants.js'
@@ -50,6 +53,47 @@ export function computeGreen(readings, phaseKey) {
   const wait = phaseAvgWait(readings, dirs)
   const green = ADAPTIVE.baseGreen + ADAPTIVE.queueWeight * q + ADAPTIVE.waitWeight * wait
   return clamp(green, TIMING.minGreen, TIMING.maxGreen)
+}
+
+// How far out the active approach must be empty before we cut its green for a
+// waiting vehicle. The longer that vehicle has sat stopped in the hotspot, the
+// smaller this range, so a long wait buys an earlier release.
+export function clearRangeFor(dwell) {
+  const extra = Math.max(0, dwell - HOTSPOT.minDwell)
+  return Math.max(HOTSPOT.clearRangeMin, HOTSPOT.clearRangeBase - HOTSPOT.clearRangeShrink * extra)
+}
+
+// Hotspot early release (gap-out).
+//
+// A vehicle sits stopped in the hotspot of a red approach while the green
+// approach has nothing left to serve. Instead of letting it wait out the rest
+// of the green timer, release the green now. Returns details of the release, or
+// null if the conditions are not met:
+//   1. the active green has run at least HOTSPOT.gapOutMinGreen seconds,
+//   2. a vehicle on the waiting road has been stopped in its hotspot for at
+//      least HOTSPOT.minDwell seconds,
+//   3. no vehicle on the active road is within clearRangeFor(dwell) of its stop
+//      line (so nothing is cut off, and the range shrinks as dwell grows).
+// The yellow and all-red intervals still run, so the switch stays safe.
+export function hotspotRelease(readings, activePhase, waitingPhase, greenElapsed) {
+  if (greenElapsed < HOTSPOT.gapOutMinGreen) return null
+
+  let dwell = 0
+  let dir = null
+  for (const d of PHASES[waitingPhase]) {
+    const r = readings[d]
+    if ((r.hotspotStopped ?? 0) > 0 && (r.hotspotDwell ?? 0) > dwell) {
+      dwell = r.hotspotDwell
+      dir = d
+    }
+  }
+  if (!dir || dwell < HOTSPOT.minDwell) return null
+
+  const range = clearRangeFor(dwell)
+  const activeClear = PHASES[activePhase].every((d) => (readings[d].nearestGap ?? Infinity) > range)
+  if (!activeClear) return null
+
+  return { dir, dwell, range }
 }
 
 // Advance anti-starvation timers each step (call every step).
@@ -85,6 +129,22 @@ export function adaptiveDecide(ctrl, signal, { readings, weather }) {
     const nextGreen = computeGreen(readings, waiting)
     requestPhaseChange(signal, waiting, nextGreen, weather)
     return { type: 'phaseChange', phase: waiting, reason: 'anti-starvation', duration: nextGreen }
+  }
+
+  // Hotspot early release: a vehicle has been sitting at the stop line and the
+  // green side has nothing coming, so don't make it wait out the timer.
+  const release = hotspotRelease(readings, active, waiting, signal.greenElapsed)
+  if (release) {
+    const nextGreen = computeGreen(readings, waiting)
+    const savedGreen = Math.max(0, targetGreen - signal.greenElapsed)
+    requestPhaseChange(signal, waiting, nextGreen, weather)
+    return {
+      type: 'phaseChange',
+      phase: waiting,
+      reason: `hotspot: ${release.dir} vehicle stopped ${release.dwell.toFixed(1)}s, ${active} approach clear`,
+      duration: nextGreen,
+      hotspot: { ...release, savedGreen },
+    }
   }
 
   // If nobody is waiting on the active phase but the other side has demand,

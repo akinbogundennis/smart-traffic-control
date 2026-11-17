@@ -15,6 +15,7 @@ import {
   MODE,
   VEHICLE_STATUS,
   WEATHER,
+  EMERGENCY_LANE,
   phaseOfDirection,
 } from '../utils/constants.js'
 import { createRng } from '../utils/rng.js'
@@ -45,6 +46,7 @@ import {
   recordGenerated,
   recordExit,
   recordEmergency,
+  recordHotspotRelease,
   sample,
   summarize,
 } from '../analytics/MetricsCalculator.js'
@@ -94,11 +96,12 @@ export function updateConfig(engine, patch) {
 }
 
 // Inject an emergency vehicle from `dir`. Spawns a visible emergency vehicle
-// and registers the priority request.
+// (riding the lane line so it can pass queued traffic) and registers the
+// priority request.
 export function injectEmergency(engine, dir) {
   const v = makeVehicle(engine.generator, engine.rng, {
     dir,
-    lane: 0,
+    lane: EMERGENCY_LANE,
     simTime: engine.clock.simTime,
     type: 'emergency',
     emergency: true,
@@ -145,9 +148,19 @@ function stepOnce(engine) {
     dt,
     lights: engine.lights,
     weatherKey: config.weatherKey,
+    simTime: engine.clock.simTime,
   })
   for (const v of exited) {
     recordExit(engine.metrics, v, engine.clock.simTime, config.weatherKey)
+    if (v.emergency) {
+      // Delay = time the emergency vehicle actually spent stopped.
+      recordEmergency(engine.metrics, v.waitTime)
+      logEvent(
+        engine,
+        `Emergency vehicle from ${v.dir.toUpperCase()} cleared the intersection (stopped ${v.waitTime.toFixed(1)}s)`,
+        'emergency',
+      )
+    }
   }
 
   // 4) Read sensors from the resulting vehicle states.
@@ -168,7 +181,6 @@ function stepOnce(engine) {
         `Priority granted to ${emResult.event.dir.toUpperCase()} (response ${emResult.event.responseTime.toFixed(1)}s)`,
         'emergency',
       )
-      recordEmergency(engine.metrics, emResult.event.responseTime)
     }
   }
 
@@ -179,14 +191,22 @@ function stepOnce(engine) {
     } else {
       adaptiveTick(engine.adaptive, engine.signal, dt)
       const ev = adaptiveDecide(engine.adaptive, engine.signal, { readings, weather })
-      if (ev) {
+      if (ev?.hotspot) {
+        recordHotspotRelease(engine.metrics, ev.hotspot.dwell, ev.hotspot.savedGreen)
+        logEvent(
+          engine,
+          `Hotspot release: switch to ${ev.phase} (${ev.reason}; cut ${ev.hotspot.savedGreen.toFixed(0)}s of idle green)`,
+          'hotspot',
+        )
+      } else if (ev) {
         logEvent(engine, `Adaptive: switch to ${ev.phase} (${ev.reason}, ${ev.duration.toFixed(0)}s)`, 'adaptive')
       }
     }
   }
 
-  // 6) If an emergency was granted and its vehicle has cleared, reset to normal.
-  if (engine.emergency.active && engine.emergency.active.grantedAt != null) {
+  // 6) Once the emergency vehicle has cleared (whether or not the signal got to
+  //    grant it a green first), return to normal operation.
+  if (engine.emergency.active) {
     const dir = engine.emergency.active.dir
     const stillPresent = engine.vehicles.some(
       (v) => v.emergency && v.dir === dir && v.status !== VEHICLE_STATUS.EXITED,

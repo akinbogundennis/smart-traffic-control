@@ -60,6 +60,8 @@ export function makeVehicle(gen, rng, { dir, lane, simTime, type, emergency }) {
     spawnTime: simTime,
     exitTime: null,
     waitTime: 0, // accumulated seconds spent stopped/queued
+    dwell: 0, // seconds continuously stopped inside the hotspot (resets on movement)
+    arrivalTime: null, // sim time the vehicle first reached the hotspot / claimed the box
   }
 }
 

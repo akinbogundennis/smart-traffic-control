@@ -11,7 +11,7 @@
 // Both the renderer and the movement engine import from here so the visuals
 // and the physics always agree.
 
-import { LANES_PER_APPROACH } from './constants.js'
+import { LANES_PER_APPROACH, HOTSPOT } from './constants.js'
 
 export const WORLD = 700 // world is WORLD x WORLD px
 export const C = WORLD / 2 // centre
@@ -187,4 +187,49 @@ export function headingAngle(dir) {
     default:
       return 0
   }
+}
+
+// ---------------------------------------------------------------------------
+// Direction-independent progress helpers
+// ---------------------------------------------------------------------------
+
+// Forward progress along an approach: larger = further toward and past the
+// centre. Normalises the four directions so gap/ordering maths is identical.
+export function progress(dir, along) {
+  return dir === 'south' || dir === 'east' ? -along : along
+}
+
+// Along-coordinate where the intersection box begins / ends for an approach.
+export function boxEntryAlong(dir) {
+  return dir === 'north' || dir === 'west' ? C - STOP : C + STOP
+}
+export function boxExitAlong(dir) {
+  return dir === 'north' || dir === 'west' ? C + STOP : C - STOP
+}
+
+// Distance from a vehicle's FRONT bumper to the stop line (negative once the
+// bumper has crossed it). `along` is the vehicle's centre.
+export function gapToStopLine(dir, along, length) {
+  return progress(dir, stopLineAlong(dir)) - progress(dir, along) - length / 2
+}
+
+// Distance from a vehicle's FRONT bumper to the box edge (negative once inside).
+export function gapToBox(dir, along, length) {
+  return progress(dir, boxEntryAlong(dir)) - progress(dir, along) - length / 2
+}
+
+// Is any part of the vehicle inside the intersection box?
+export function inBox(dir, along, length) {
+  const p = progress(dir, along)
+  const front = p + length / 2
+  const rear = p - length / 2
+  return front > progress(dir, boxEntryAlong(dir)) && rear < progress(dir, boxExitAlong(dir))
+}
+
+// Is the vehicle inside its approach's hotspot zone (upstream of the stop line,
+// within HOTSPOT.length of it)? Vehicles whose centre has crossed the stop line
+// are committed to crossing and no longer count.
+export function inHotspot(v) {
+  if (pastStopLine(v.dir, v.along)) return false
+  return gapToStopLine(v.dir, v.along, v.length) <= HOTSPOT.length
 }

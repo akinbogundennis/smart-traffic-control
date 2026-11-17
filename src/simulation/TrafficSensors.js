@@ -13,9 +13,18 @@
 //   avgWait       mean accumulated wait time of waiting vehicles (s)
 //   avgSpeed      mean speed of approach vehicles (px/s)
 //   occupancy     fraction of the approach road length covered by vehicles
+//
+// Hotspot readings (the detection zone just before the stop line):
+//   hotspotCount    vehicles inside the zone
+//   hotspotStopped  vehicles inside the zone that are stopped
+//   hotspotDwell    longest time (s) any vehicle has been continuously stopped
+//                   in the zone
+//   nearestGap      distance (px) from the stop line to the closest vehicle that
+//                   has not yet crossed it (Infinity if the approach is empty)
+//   crossing        vehicles past the stop line that have not yet cleared
 
 import { DIRECTIONS, VEHICLE_STATUS } from '../utils/constants.js'
-import { pastStopLine } from '../utils/geometry.js'
+import { pastStopLine, inHotspot, gapToStopLine } from '../utils/geometry.js'
 import { WORLD } from '../utils/geometry.js'
 
 export function createSensors() {
@@ -35,6 +44,11 @@ function emptyReadings() {
       avgWait: 0,
       avgSpeed: 0,
       occupancy: 0,
+      hotspotCount: 0,
+      hotspotStopped: 0,
+      hotspotDwell: 0,
+      nearestGap: Infinity,
+      crossing: 0,
     }
   }
   return r
@@ -50,13 +64,21 @@ export function recordArrival(sensors, dir, simTime) {
 export function read(sensors, vehicles, simTime, windowSec = 10) {
   const readings = emptyReadings()
   const sums = {}
-  for (const d of DIRECTIONS) sums[d] = { wait: 0, waitN: 0, speed: 0, n: 0, coveredLen: 0 }
+  for (const d of DIRECTIONS) {
+    sums[d] = {
+      wait: 0, waitN: 0, speed: 0, n: 0, coveredLen: 0,
+      hot: 0, hotStopped: 0, dwell: 0, nearestGap: Infinity, crossing: 0,
+    }
+  }
 
   for (const v of vehicles) {
     if (v.status === VEHICLE_STATUS.EXITED) continue
-    // Only count vehicles that haven't passed the stop line (still "approaching"
-    // the controlled stop line) as part of the approach the controller reacts to.
-    if (pastStopLine(v.dir, v.along)) continue
+    // Vehicles past the stop line are committed to crossing; count them
+    // separately and keep them out of the approach readings.
+    if (pastStopLine(v.dir, v.along)) {
+      sums[v.dir].crossing += 1
+      continue
+    }
 
     const s = sums[v.dir]
     s.n += 1
@@ -65,6 +87,16 @@ export function read(sensors, vehicles, simTime, windowSec = 10) {
     if (v.status === VEHICLE_STATUS.QUEUED || v.speed < 5) {
       s.wait += v.waitTime
       s.waitN += 1
+    }
+
+    // Hotspot detection.
+    s.nearestGap = Math.min(s.nearestGap, gapToStopLine(v.dir, v.along, v.length))
+    if (inHotspot(v)) {
+      s.hot += 1
+      if (v.speed < 1) {
+        s.hotStopped += 1
+        s.dwell = Math.max(s.dwell, v.dwell)
+      }
     }
   }
 
@@ -83,6 +115,11 @@ export function read(sensors, vehicles, simTime, windowSec = 10) {
       avgSpeed: s.n > 0 ? s.speed / s.n : 0,
       // Approach length available before the stop line is roughly half the world.
       occupancy: Math.min(1, s.coveredLen / (WORLD / 2)),
+      hotspotCount: s.hot,
+      hotspotStopped: s.hotStopped,
+      hotspotDwell: s.dwell,
+      nearestGap: s.nearestGap,
+      crossing: s.crossing,
     }
   }
 
