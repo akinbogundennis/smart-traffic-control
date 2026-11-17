@@ -31,7 +31,7 @@
 // slow to a crawl ("creep") so the emergency vehicle can pass alongside.
 
 import { LIGHT, VEHICLE_STATUS, INTERSECTION, phaseOfDirection } from '../utils/constants.js'
-import { progress, pastStopLine, inBox, inHotspot, gapToBox } from '../utils/geometry.js'
+import { progress, pastStopLine, inBox, inHotspot, gapToBox, clearedIntersection } from '../utils/geometry.js'
 
 // The approach whose vehicles are on a given approach's RIGHT-hand side.
 // North-entering traffic moves down, so its right is the west side, and so on.
@@ -104,6 +104,8 @@ export function planIntersectionAccess(vehicles, lights, simTime = 0) {
   for (const group of lanes.values()) {
     group.sort((a, b) => progress(b.dir, b.along) - progress(a.dir, a.along))
     for (const v of group) {
+      // Already through and driving away: not in the box and not waiting to enter.
+      if (clearedIntersection(v.dir, v.along)) continue
       if (inBox(v.dir, v.along, v.length)) {
         occupants[axisOf(v.dir)].push(v)
       } else {

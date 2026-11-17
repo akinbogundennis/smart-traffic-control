@@ -147,7 +147,8 @@ export function pastStopLine(dir, along) {
   }
 }
 
-// Has the vehicle fully exited the intersection box (cleared the far stop line)?
+// Has the vehicle left the intersection box on the far side? It keeps
+// driving after this; it is not removed until offWorld.
 export function clearedIntersection(dir, along) {
   switch (dir) {
     case 'north':
@@ -192,6 +193,12 @@ export function headingAngle(dir) {
 // ---------------------------------------------------------------------------
 // Direction-independent progress helpers
 // ---------------------------------------------------------------------------
+
+// True once the vehicle has travelled past the edge of the world and can
+// be removed. Until then it stays on its lane, including the outbound side.
+export function offWorld(dir, along) {
+  return progress(dir, along) >= progress(dir, exitAlong(dir))
+}
 
 // Forward progress along an approach: larger = further toward and past the
 // centre. Normalises the four directions so gap/ordering maths is identical.

@@ -13,7 +13,7 @@
 //   throughput       processed per simulated hour
 //   history          time series for charts (wait, queue, throughput)
 
-import { WORLD } from '../utils/geometry.js'
+import { spawnAlong, exitAlong, progress } from '../utils/geometry.js'
 import { VEHICLE, WEATHER } from '../utils/constants.js'
 
 export function createMetrics() {
@@ -51,7 +51,8 @@ export function recordExit(m, vehicle, simTime, weatherKey) {
 
   const travelTime = simTime - vehicle.spawnTime
   const weather = WEATHER[weatherKey] ?? WEATHER.clear
-  const freeFlowTime = WORLD / (VEHICLE.baseSpeed * weather.speedFactor)
+  const pathLength = progress(vehicle.dir, exitAlong(vehicle.dir)) - progress(vehicle.dir, spawnAlong(vehicle.dir))
+  const freeFlowTime = pathLength / (VEHICLE.baseSpeed * weather.speedFactor)
   const delay = Math.max(0, travelTime - freeFlowTime)
   m.totalDelay += delay
 }

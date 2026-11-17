@@ -38,6 +38,7 @@ import {
   stopLineAlong,
   pastStopLine,
   clearedIntersection,
+  offWorld,
   progress,
   gapToStopLine,
   gapToBox,
@@ -166,16 +167,17 @@ export function stepMovement(vehicles, { dt, lights, weatherKey, simTime = 0 }) 
         v.dwell = 0
       }
 
-      // Status + waiting-time bookkeeping.
-      if (clearedIntersection(v.dir, v.along)) {
+      // Status + waiting-time bookkeeping. Leaving the box is not an exit:
+      // the vehicle keeps its lane until it passes the edge of the world.
+      if (offWorld(v.dir, v.along)) {
         if (v.status !== VEHICLE_STATUS.EXITED) {
           v.status = VEHICLE_STATUS.EXITED
           v.exitTime = null // engine stamps sim time
           exited.push(v)
         }
-      } else if (pastStopLine(v.dir, v.along)) {
+      } else if (pastStopLine(v.dir, v.along) && !clearedIntersection(v.dir, v.along)) {
         v.status = VEHICLE_STATUS.CROSSING
-      } else if (v.speed === 0) {
+      } else if (v.speed === 0 && !pastStopLine(v.dir, v.along)) {
         v.status = VEHICLE_STATUS.QUEUED
         v.waitTime += dt
       } else {

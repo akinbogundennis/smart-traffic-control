@@ -278,7 +278,7 @@ waited too long.
 
 ## Simulation assumptions
 
-- Vehicles travel straight through; no turning movements or lane changes.
+- Vehicles travel straight through and continue to the edge of the world after the light; no turning movements or lane changes.
 - One isolated intersection; no network coordination.
 - Weather effects are simplified rules (speed, acceleration, stopping distance,
   yellow/all-red length), not a safety-validated model.

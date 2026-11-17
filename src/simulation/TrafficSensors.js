@@ -24,7 +24,7 @@
 //   crossing        vehicles past the stop line that have not yet cleared
 
 import { DIRECTIONS, VEHICLE_STATUS } from '../utils/constants.js'
-import { pastStopLine, inHotspot, gapToStopLine } from '../utils/geometry.js'
+import { pastStopLine, inHotspot, gapToStopLine, clearedIntersection, inBox } from '../utils/geometry.js'
 import { WORLD } from '../utils/geometry.js'
 
 export function createSensors() {
@@ -76,7 +76,11 @@ export function read(sensors, vehicles, simTime, windowSec = 10) {
     // Vehicles past the stop line are committed to crossing; count them
     // separately and keep them out of the approach readings.
     if (pastStopLine(v.dir, v.along)) {
-      sums[v.dir].crossing += 1
+      // Still inside the box counts as crossing. Past the box, the vehicle is
+      // just driving away and is no longer a sensor reading.
+      if (!clearedIntersection(v.dir, v.along) || inBox(v.dir, v.along, v.length)) {
+        sums[v.dir].crossing += 1
+      }
       continue
     }
 

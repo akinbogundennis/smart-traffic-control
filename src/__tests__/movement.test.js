@@ -5,7 +5,7 @@ import { stepMovement } from '../simulation/VehicleMovement.js'
 import { makeVehicle, createGenerator } from '../simulation/VehicleGenerator.js'
 import { createRng } from '../utils/rng.js'
 import { LIGHT, VEHICLE_STATUS } from '../utils/constants.js'
-import { spawnAlong, stopLineAlong, pastStopLine } from '../utils/geometry.js'
+import { spawnAlong, stopLineAlong, pastStopLine, clearedIntersection, offWorld } from '../utils/geometry.js'
 
 function spawnCar(dir, overrides = {}) {
   const gen = createGenerator()
@@ -52,14 +52,18 @@ describe('waiting time accrual', () => {
 })
 
 describe('green lets vehicles proceed', () => {
-  it('a queued car crosses and exits on green', () => {
+  it('a queued car crosses, keeps going past the box, and leaves at the world edge', () => {
     const GREEN = { ...RED, north: LIGHT.GREEN, south: LIGHT.GREEN }
     const v = spawnCar('north', { along: stopLineAlong('north') - 15, speed: 0 })
+    let sawPastBox = false
     let exited = false
     for (let i = 0; i < 40 * 60 && !exited; i++) {
       const r = stepMovement([v], { dt: 1 / 60, lights: GREEN, weatherKey: 'clear' })
+      if (clearedIntersection(v.dir, v.along) && v.status !== VEHICLE_STATUS.EXITED) sawPastBox = true
       if (r.exited.includes(v)) exited = true
     }
+    expect(sawPastBox).toBe(true)
+    expect(offWorld('north', v.along) || v.status === VEHICLE_STATUS.EXITED).toBe(true)
     expect(v.status).toBe(VEHICLE_STATUS.EXITED)
   })
 })
