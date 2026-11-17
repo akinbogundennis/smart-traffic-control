@@ -229,35 +229,6 @@ function drawSignalHead(ctx, p, state) {
   ctx.textAlign = 'start'
 }
 
-// Sensor visualization overlay: a translucent detection zone on each inbound
-// approach with its live count/queue (prompt: "enable live sensor visualization").
-export function drawSensors(ctx, readings) {
-  if (!readings) return
-  ctx.save()
-  const zone = 70
-  const specs = {
-    north: { x: C, y: C - STOP - zone, w: HALF_ROAD, h: zone },
-    south: { x: C - HALF_ROAD, y: C + STOP, w: HALF_ROAD, h: zone },
-    west: { x: C - STOP - zone, y: C, w: zone, h: HALF_ROAD },
-    east: { x: C + STOP, y: C - HALF_ROAD, w: zone, h: HALF_ROAD },
-  }
-  for (const dir of Object.keys(specs)) {
-    const s = specs[dir]
-    const r = readings[dir]
-    const intensity = Math.min(1, (r?.queueLength ?? 0) / 8)
-    ctx.fillStyle = `rgba(91,184,255,${0.08 + intensity * 0.22})`
-    ctx.fillRect(s.x, s.y, s.w, s.h)
-    ctx.strokeStyle = 'rgba(91,184,255,0.5)'
-    ctx.setLineDash([4, 4])
-    ctx.strokeRect(s.x, s.y, s.w, s.h)
-    ctx.setLineDash([])
-    ctx.fillStyle = '#bfe0ff'
-    ctx.font = '9px ui-monospace, monospace'
-    ctx.fillText(`${dir[0].toUpperCase()} q:${r?.queueLength ?? 0}`, s.x + 4, s.y + 12)
-  }
-  ctx.restore()
-}
-
 // Weather overlay (rain streaks / fog haze). `phase` animates it.
 export function drawWeather(ctx, weatherKey, phase) {
   if (weatherKey === 'rain') {

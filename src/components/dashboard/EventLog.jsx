@@ -2,11 +2,12 @@ import { ScrollText } from 'lucide-react'
 import Panel from '../common/Panel.jsx'
 
 // Simulation event log (prompt section 12). Shows recent engine events like
-// phase changes, congestion/adaptive decisions, weather, and emergencies.
+// phase changes, hotspot early releases, adaptive decisions, and emergencies.
 
 const KIND_COLOR = {
   signal: 'text-signal-green',
   adaptive: 'text-accent',
+  hotspot: 'text-signal-yellow',
   emergency: 'text-danger',
   info: 'text-muted',
 }

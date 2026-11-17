@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { WORLD } from '../../utils/geometry.js'
 import { headingAngle, toXY } from '../../utils/geometry.js'
-import { drawScene, drawSignals, drawSensors, drawWeather } from './drawScene.js'
+import { drawScene, drawSignals, drawWeather } from './drawScene.js'
+import { drawSensors } from './drawHotspots.js'
 import { drawVehicle } from './drawVehicle.js'
 
 // The animated top-down intersection. Renders purely from the snapshot each
