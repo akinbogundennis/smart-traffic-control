@@ -45,6 +45,7 @@ import {
   inHotspot,
 } from '../utils/geometry.js'
 import { planIntersectionAccess } from './IntersectionManager.js'
+import { turnHoldDistance, distanceToTurnPoint, turnAllowed, applyTurn } from './turns.js'
 
 // Convert a forward distance back into an `along` delta for the direction.
 function applyForward(dir, along, forwardDelta) {
@@ -139,6 +140,14 @@ export function stepMovement(vehicles, { dt, lights, weatherKey, simTime = 0 }) 
         maxForward = Math.min(maxForward, Math.max(0, distHold))
       }
 
+      // 4) Turns. Left turns wait behind the stop line while oncoming traffic
+      //    has priority. Everyone stops on the corner, then swings onto the
+      //    outbound lane once the gap is clear.
+      const holdTurn = turnHoldDistance(v, vehicles)
+      if (holdTurn != null) {
+        maxForward = Math.min(maxForward, Math.max(0, holdTurn))
+      }
+
       // Desired speed: the cruise speed, capped so we can still stop within
       // the room we have (smooth braking instead of stopping dead).
       let desired = cruise
@@ -158,6 +167,9 @@ export function stepMovement(vehicles, { dt, lights, weatherKey, simTime = 0 }) 
       const forward = Math.min(v.speed * dt, maxForward)
       v.along = applyForward(v.dir, v.along, forward)
       v.targetSpeed = desired
+      if (distanceToTurnPoint(v) <= 1 && turnAllowed(v, vehicles)) {
+        applyTurn(v)
+      }
 
       // Hotspot bookkeeping: dwell is the time continuously stopped in the zone.
       if (inHotspot(v)) {

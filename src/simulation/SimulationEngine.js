@@ -275,6 +275,8 @@ export function snapshot(engine) {
       along: v.along,
       type: v.type,
       emergency: v.emergency,
+      turn: v.turn,
+      turned: v.turned,
       color: v.color,
       length: v.length,
       width: v.width,

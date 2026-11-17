@@ -278,7 +278,7 @@ waited too long.
 
 ## Simulation assumptions
 
-- Vehicles travel straight through and continue to the edge of the world after the light; no turning movements or lane changes.
+- Vehicles continue to the edge of the world after the light. Most go straight; lane 0 may turn left and lane 1 may turn right. Left turns yield to oncoming traffic. No turn on red and no lane changes.
 - One isolated intersection; no network coordination.
 - Weather effects are simplified rules (speed, acceleration, stopping distance,
   yellow/all-red length), not a safety-validated model.

@@ -14,6 +14,8 @@ import {
   VEHICLE,
   VEHICLE_STATUS,
   VEHICLE_TYPE,
+  TURN,
+  TURN_CHANCE,
 } from '../utils/constants.js'
 import { spawnAlong } from '../utils/geometry.js'
 
@@ -34,7 +36,7 @@ export function createGenerator() {
 }
 
 // Build a single vehicle object (prompt section 9 lists the required fields).
-export function makeVehicle(gen, rng, { dir, lane, simTime, type, emergency }) {
+export function makeVehicle(gen, rng, { dir, lane, simTime, type, emergency, turn }) {
   const chosenType = emergency ? VEHICLE_TYPE.EMERGENCY : type
   const sizeByType = {
     [VEHICLE_TYPE.CAR]: { length: VEHICLE.length, width: VEHICLE.width },
@@ -62,6 +64,8 @@ export function makeVehicle(gen, rng, { dir, lane, simTime, type, emergency }) {
     waitTime: 0, // accumulated seconds spent stopped/queued
     dwell: 0, // seconds continuously stopped inside the hotspot (resets on movement)
     arrivalTime: null, // sim time the vehicle first reached the hotspot / claimed the box
+    turn: emergency ? TURN.STRAIGHT : (turn ?? TURN.STRAIGHT),
+    turned: false, // true once a left or right turn has been made
   }
 }
 
@@ -80,9 +84,12 @@ export function generate(gen, rng, { dt, simTime, demand, totalRate }) {
     const p = dirRate * dt
     if (rng.chance(Math.min(p, 0.9))) {
       const lane = rng.int(0, LANES_PER_APPROACH - 1)
+      // One draw per spawn, independent of mode, so both controllers see the same turns.
+      const turning = rng.chance(TURN_CHANCE)
+      const turn = !turning ? TURN.STRAIGHT : lane === 0 ? TURN.LEFT : TURN.RIGHT
       const typePick = TYPE_WEIGHTS[rng.weightedIndex(TYPE_WEIGHTS.map((t) => t.weight))]
       spawned.push(
-        makeVehicle(gen, rng, { dir, lane, simTime, type: typePick.type, emergency: false }),
+        makeVehicle(gen, rng, { dir, lane, simTime, type: typePick.type, emergency: false, turn }),
       )
     }
   }

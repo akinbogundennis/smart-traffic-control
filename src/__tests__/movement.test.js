@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest'
 import { stepMovement } from '../simulation/VehicleMovement.js'
 import { makeVehicle, createGenerator } from '../simulation/VehicleGenerator.js'
 import { createRng } from '../utils/rng.js'
-import { LIGHT, VEHICLE_STATUS } from '../utils/constants.js'
+import { LIGHT, VEHICLE_STATUS, TURN } from '../utils/constants.js'
 import { spawnAlong, stopLineAlong, pastStopLine, clearedIntersection, offWorld } from '../utils/geometry.js'
 
 function spawnCar(dir, overrides = {}) {
@@ -77,5 +77,45 @@ describe('no overlap between following vehicles', () => {
       // Following car must stay behind the leader (smaller `along` for north).
       expect(follow.along).toBeLessThan(lead.along)
     }
+  })
+})
+
+describe('turns', () => {
+  const GREEN = { north: LIGHT.GREEN, south: LIGHT.GREEN, east: LIGHT.GREEN, west: LIGHT.GREEN }
+
+  it('a left turn waits while oncoming traffic has not cleared', () => {
+    const left = spawnCar('north', {
+      lane: 0,
+      turn: TURN.LEFT,
+      along: stopLineAlong('north') - 30,
+      speed: 40,
+    })
+    const oncoming = spawnCar('south', {
+      lane: 0,
+      turn: TURN.STRAIGHT,
+      along: stopLineAlong('south') + 20,
+      speed: 0,
+    })
+    for (let i = 0; i < 3 * 60; i++) {
+      stepMovement([left, oncoming], { dt: 1 / 60, lights: GREEN, weatherKey: 'clear' })
+    }
+    expect(left.turned).toBe(false)
+    expect(pastStopLine('north', left.along)).toBe(false)
+  })
+
+  it('a right turn from the outer lane swings onto the cross road when it is clear', () => {
+    const right = spawnCar('north', {
+      lane: 1,
+      turn: TURN.RIGHT,
+      along: stopLineAlong('north') - 20,
+      speed: 0,
+    })
+    let turned = false
+    for (let i = 0; i < 20 * 60 && !turned; i++) {
+      stepMovement([right], { dt: 1 / 60, lights: GREEN, weatherKey: 'clear' })
+      turned = right.turned
+    }
+    expect(right.turned).toBe(true)
+    expect(right.dir).toBe('east')
   })
 })

@@ -189,6 +189,17 @@ export const VEHICLE_STATUS = {
   EXITED: 'exited',
 }
 
+// Turns. Lane 0 (nearest the centre line) may turn left; lane 1 (outer) may
+// turn right. Straight is allowed from either. Emergency vehicles go straight.
+export const TURN = {
+  STRAIGHT: 'straight',
+  LEFT: 'left',
+  RIGHT: 'right',
+}
+// Chance a spawned vehicle takes the turn its lane allows. The rest go straight,
+// so the mix is about 70% straight, 15% left, 15% right.
+export const TURN_CHANCE = 0.3
+
 export const VEHICLE_TYPE = {
   CAR: 'car',
   TRUCK: 'truck',
